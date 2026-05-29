@@ -5,51 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>投篮训练记录器</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-        /* 新增：总计数据显示区域的样式 */
-        .total-stats {
-            background-color: #e3f2fd;
-            border: 2px solid #2196f3;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .spot-container { 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            padding: 15px; 
-            background-color: #f9f9f9;
-        }
-        .btn-make { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;}
-        .btn-miss { background-color: #f44336; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;}
-        .btn-undo { background-color: #9e9e9e; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 10px;}
-        .stats { margin-top: 10px; font-weight: bold; font-size: 18px; }
-        .controls { margin-top: 10px; }
+        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f4f9; color: #333; }
+        h2 { text-align: center; }
+        
+        /* 选项卡样式 */
+        .tabs { display: flex; margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; background: #ddd; font-size: 16px; font-weight: bold; transition: background 0.3s; }
+        .tab.active { background: #2196f3; color: white; }
+        
+        /* 容器样式 */
+        .view-container { display: none; }
+        .view-container.active { display: block; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .date-display { font-size: 16px; color: #555; font-weight: bold; }
+        
+        /* 按钮通用样式 */
+        button { border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
+        .btn-save { background-color: #ff9800; color: white; padding: 10px 15px; font-size: 16px; font-weight: bold; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-top: 10px; }
+        .btn-clear-all { background-color: #e0e0e0; color: #333; padding: 8px 12px; font-size: 14px; margin-top: 15px; width: 100%; }
+        .btn-make { background-color: #4CAF50; color: white; padding: 10px 15px; font-size: 16px; width: 48%; }
+        .btn-miss { background-color: #f44336; color: white; padding: 10px 15px; font-size: 16px; width: 48%; }
+        .btn-undo { background-color: #9e9e9e; color: white; padding: 5px 10px; font-size: 12px; margin-left: 10px; }
+        
+        /* 统计卡片样式 */
+        .total-stats { background-color: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 20px; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .spot-container { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px; padding: 15px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .controls { display: flex; justify-content: space-between; margin-top: 10px; }
+        .stats { margin-top: 10px; font-weight: bold; font-size: 16px; line-height: 1.5; }
+        
+        /* 历史记录下拉框 */
+        .history-selector { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 4px; border: 1px solid #ccc; }
+        .empty-msg { text-align: center; color: #777; font-style: italic; padding: 20px; }
     </style>
 </head>
 <body>
 
     <h2>投篮训练记录器</h2>
     
-    <div id="total-display" class="total-stats"></div>
-    
-    <div id="app"></div>
+    <div class="tabs">
+        <div class="tab active" id="tab-train" onclick="switchTab('train')">今日训练</div>
+        <div class="tab" id="tab-history" onclick="switchTab('history')">历史记录</div>
+    </div>
+
+    <!-- 今日训练视图 -->
+    <div id="view-train" class="view-container active">
+        <div class="header">
+            <span class="date-display" id="current-date-display"></span>
+        </div>
+        
+        <div id="train-total-display" class="total-stats"></div>
+        <div id="train-app"></div>
+        
+        <button class="btn-save" onclick="saveTodayData()">💾 保存今日数据至历史记录</button>
+        <button class="btn-clear-all" onclick="clearTodayData()">⚠️ 清空今日临时数据</button>
+    </div>
+
+    <!-- 历史记录视图 -->
+    <div id="view-history" class="view-container">
+        <select id="history-date-selector" class="history-selector" onchange="renderHistoryView()">
+            <option value="">-- 请选择日期 --</option>
+        </select>
+        
+        <div id="history-content">
+            <!-- 历史数据将渲染在这里 -->
+        </div>
+    </div>
 
     <script>
         const numSpots = 5;
-        let spotsData = Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
+        
+        // 获取格式化的今日日期 (例如: 2026-05-29)
+        function getTodayString() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+        
+        const todayStr = getTodayString();
 
-        function render() {
-            // 1. 计算所有点位的总体数据
+        // 初始化数据
+        // todayData: 当前正在训练的数据（缓存在本地，防刷新丢失）
+        // historyData: 存储所有历史数据的对象 { "2026-05-29": [点位数组], "2026-05-28": [...] }
+        let todayData = JSON.parse(localStorage.getItem('basketballCurrent')) || Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
+        let historyData = JSON.parse(localStorage.getItem('basketballHistory')) || {};
+
+        // === 核心逻辑 ===
+
+        function saveLocalCurrent() {
+            localStorage.setItem('basketballCurrent', JSON.stringify(todayData));
+        }
+
+        function saveTodayData() {
+            // 将今日数据深拷贝并存入历史记录对象中，键名为当天的日期
+            historyData[todayStr] = JSON.parse(JSON.stringify(todayData));
+            localStorage.setItem('basketballHistory', JSON.stringify(historyData));
+            alert(`已成功保存 ${todayStr} 的训练数据！`);
+        }
+
+        function clearTodayData() {
+            if(confirm("确定要清空今日的临时训练数据吗？（不影响已保存的历史记录）")) {
+                todayData = Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
+                saveLocalCurrent();
+                renderTrainView();
+            }
+        }
+
+        function recordShot(index, isMake) {
+            if (isMake) {
+                todayData[index].makes += 1;
+            } else {
+                todayData[index].misses += 1;
+            }
+            saveLocalCurrent();
+            renderTrainView(); 
+        }
+
+        function resetSpot(index) {
+            todayData[index].makes = 0;
+            todayData[index].misses = 0;
+            saveLocalCurrent();
+            renderTrainView();
+        }
+
+        // === 视图渲染逻辑 ===
+
+        function switchTab(tabName) {
+            document.getElementById('tab-train').className = 'tab' + (tabName === 'train' ? ' active' : '');
+            document.getElementById('tab-history').className = 'tab' + (tabName === 'history' ? ' active' : '');
+            
+            document.getElementById('view-train').className = 'view-container' + (tabName === 'train' ? ' active' : '');
+            document.getElementById('view-history').className = 'view-container' + (tabName === 'history' ? ' active' : '');
+
+            if (tabName === 'history') {
+                updateHistorySelector();
+                renderHistoryView();
+            }
+        }
+
+        // 计算并生成统计HTML（通用函数，用于训练和历史视图）
+        function generateStatsHTML(dataArray, isReadOnly = false) {
             let overallMakes = 0;
             let overallMisses = 0;
             
-            spotsData.forEach(spot => {
+            dataArray.forEach(spot => {
                 overallMakes += spot.makes;
                 overallMisses += spot.misses;
             });
@@ -57,58 +158,82 @@
             const overallTotal = overallMakes + overallMisses;
             const overallPercentage = overallTotal === 0 ? 0 : ((overallMakes / overallTotal) * 100).toFixed(1);
 
-            // 2. 更新页面顶部的总计看板
-            const totalDisplay = document.getElementById('total-display');
-            totalDisplay.innerHTML = `
-                累计总投篮数: ${overallTotal} 次
-                <div style="font-size: 16px; font-weight: normal; color: #555; margin-top: 5px;">
-                    总进球: ${overallMakes} | 总命中率: <span style="color: ${overallPercentage >= 50 ? 'green' : 'red'}; font-weight: bold;">${overallPercentage}%</span>
+            let html = `
+                <div class="total-stats">
+                    累计总投篮数: ${overallTotal} 次
+                    <div style="font-size: 16px; font-weight: normal; color: #555; margin-top: 5px;">
+                        总进球: ${overallMakes} | 总命中率: <span style="color: ${overallPercentage >= 50 ? 'green' : 'red'}; font-weight: bold;">${overallPercentage}%</span>
+                    </div>
                 </div>
             `;
 
-            // 3. 渲染各个独立点位
-            const app = document.getElementById('app');
-            app.innerHTML = ''; 
-
-            spotsData.forEach((spot, index) => {
+            dataArray.forEach((spot, index) => {
                 const total = spot.makes + spot.misses;
                 const percentage = total === 0 ? 0 : ((spot.makes / total) * 100).toFixed(1);
 
-                const div = document.createElement('div');
-                div.className = 'spot-container';
-                div.innerHTML = `
-                    <h3>点位 ${index + 1} 
-                        <button class="btn-undo" onclick="resetSpot(${index})">重置归零</button>
-                    </h3>
-                    <div class="controls">
-                        <button class="btn-make" onclick="recordShot(${index}, true)">进球 +1</button>
-                        <button class="btn-miss" onclick="recordShot(${index}, false)">不进 +1</button>
-                    </div>
-                    <div class="stats">
-                        进球: ${spot.makes} | 不进: ${spot.misses} <br>
-                        单点投篮: ${total} | 命中率: <span style="color: ${percentage >= 50 ? 'green' : 'red'};">${percentage}%</span>
+                html += `
+                    <div class="spot-container">
+                        <h3 style="margin-top:0;">点位 ${index + 1} ${isReadOnly ? '' : `<button class="btn-undo" onclick="resetSpot(${index})">重置归零</button>`}</h3>
+                        ${isReadOnly ? '' : `
+                        <div class="controls">
+                            <button class="btn-make" onclick="recordShot(${index}, true)">进球 +1</button>
+                            <button class="btn-miss" onclick="recordShot(${index}, false)">不进 +1</button>
+                        </div>
+                        `}
+                        <div class="stats">
+                            进球: ${spot.makes} | 不进: ${spot.misses} <br>
+                            单点投篮: ${total} | 命中率: <span style="color: ${percentage >= 50 ? 'green' : 'red'};">${percentage}%</span>
+                        </div>
                     </div>
                 `;
-                app.appendChild(div);
+            });
+
+            return html;
+        }
+
+        function renderTrainView() {
+            document.getElementById('current-date-display').innerText = `📅 当前日期: ${todayStr}`;
+            document.getElementById('train-app').innerHTML = generateStatsHTML(todayData, false);
+            // 移除原本自带的 total-stats 防止重复，将 generateStatsHTML 的输出直接放在 train-app 中
+            document.getElementById('train-total-display').style.display = 'none'; 
+        }
+
+        function updateHistorySelector() {
+            const selector = document.getElementById('history-date-selector');
+            selector.innerHTML = '<option value="">-- 请选择历史日期 --</option>';
+            
+            // 按日期倒序排列
+            const dates = Object.keys(historyData).sort((a, b) => new Date(b) - new Date(a));
+            
+            if (dates.length === 0) {
+                selector.innerHTML = '<option value="">暂无历史记录</option>';
+                return;
+            }
+
+            dates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.text = date;
+                selector.appendChild(option);
             });
         }
 
-        function recordShot(index, isMake) {
-            if (isMake) {
-                spotsData[index].makes += 1;
-            } else {
-                spotsData[index].misses += 1;
+        function renderHistoryView() {
+            const date = document.getElementById('history-date-selector').value;
+            const contentDiv = document.getElementById('history-content');
+            
+            if (!date || !historyData[date]) {
+                contentDiv.innerHTML = '<div class="empty-msg">请在上方选择一个日期以查看数据。</div>';
+                return;
             }
-            render(); 
+
+            const targetData = historyData[date];
+            // 传入 true 表示只读，不渲染操作按钮
+            contentDiv.innerHTML = generateStatsHTML(targetData, true);
         }
 
-        function resetSpot(index) {
-            spotsData[index].makes = 0;
-            spotsData[index].misses = 0;
-            render();
-        }
-
-        render();
+        // 初始化
+        renderTrainView();
     </script>
 </body>
 </html>
