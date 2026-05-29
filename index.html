@@ -337,14 +337,13 @@
                     }
                     if (count > 0) {
                         alert(`✅ 成功导入了 ${count} 天的训练数据！`);
-                        loadDataForDay(dayInput.value); // 刷新当前界面
+                        loadDataForDay(dayInput.value); 
                     } else {
                         alert('⚠️ 文件中没有检测到有效的训练数据。');
                     }
                 } catch (error) {
                     alert('❌ 数据格式错误，导入失败。');
                 }
-                // 清空 input file 的值，允许重复导入同一个文件
                 importFile.value = '';
             };
             reader.readAsText(file);
