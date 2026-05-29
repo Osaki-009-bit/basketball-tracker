@@ -5,78 +5,282 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>投篮训练记录器</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-        .spot-container { 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            padding: 15px; 
-            background-color: #f9f9f9;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            padding: 20px;
+            color: #333;
         }
-        .btn-make { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;}
-        .btn-miss { background-color: #f44336; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;}
-        .btn-undo { background-color: #9e9e9e; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 10px;}
-        .stats { margin-top: 10px; font-weight: bold; font-size: 18px; }
-        .controls { margin-top: 10px; }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .header-panel {
+            background-color: #eef2f9;
+            border: 1px solid #d0d7e5;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .controls-row input[type="date"] {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .controls-row input[type="number"] {
+            width: 50px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .btn-save {
+            background-color: #3a75c4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-save:hover {
+            background-color: #2b5a9e;
+        }
+        .note {
+            font-size: 13px;
+            color: #555;
+            margin: 0;
+        }
+        .spot-card {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .spot-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .spot-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .btn-reset {
+            background-color: #b0bec5;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-reset:hover {
+            background-color: #90a4ae;
+        }
+        .spot-actions {
+            margin-bottom: 15px;
+        }
+        .btn-make {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        .btn-make:hover {
+            background-color: #43a047;
+        }
+        .btn-miss {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-miss:hover {
+            background-color: #e53935;
+        }
+        .spot-stats {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #111;
+        }
+        .stat-highlight {
+            font-weight: bold;
+            color: #d32f2f; /* 命中率标红，符合你的图示习惯 */
+        }
     </style>
 </head>
 <body>
 
+<div class="container">
     <h2>投篮训练记录器</h2>
-    <div id="app"></div>
+    
+    <div class="header-panel">
+        <div class="controls-row">
+            <input type="date" id="dateInput">
+            <span>第 <input type="number" id="dayInput" value="3" min="1"> 天</span>
+            <button class="btn-save" id="saveBtn">💾 保存</button>
+        </div>
+        <p class="note">注：选择不同的天数时，当前数据将保存，并可调用历史数据。</p>
+    </div>
 
-    <script>
-        // 初始化5个点位的数据
-        const numSpots = 5;
-        let spotsData = Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
+    <div id="spotsContainer">
+        </div>
+</div>
 
-        function render() {
-            const app = document.getElementById('app');
-            app.innerHTML = ''; 
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const dayInput = document.getElementById('dayInput');
+        const dateInput = document.getElementById('dateInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const spotsContainer = document.getElementById('spotsContainer');
 
-            spotsData.forEach((spot, index) => {
-                const total = spot.makes + spot.misses;
-                // 计算命中率，如果分母为0则显示0%
-                const percentage = total === 0 ? 0 : ((spot.makes / total) * 100).toFixed(1);
+        // 默认初始化今天的日期
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
 
-                const div = document.createElement('div');
-                div.className = 'spot-container';
-                div.innerHTML = `
-                    <h3>点位 ${index + 1} 
-                        <button class="btn-undo" onclick="resetSpot(${index})">重置归零</button>
-                    </h3>
-                    <div class="controls">
-                        <button class="btn-make" onclick="recordShot(${index}, true)">进球 +1</button>
-                        <button class="btn-miss" onclick="recordShot(${index}, false)">不进 +1</button>
-                    </div>
-                    <div class="stats">
-                        进球: ${spot.makes} | 不进: ${spot.misses} <br>
-                        总投篮: ${total} | 命中率: <span style="color: ${percentage >= 50 ? 'green' : 'red'};">${percentage}%</span>
-                    </div>
-                `;
-                app.appendChild(div);
-            });
+        // 初始化5个点位的数据结构
+        let spotsData = Array(5).fill().map(() => ({ make: 0, miss: 0 }));
+
+        // 动态生成HTML卡片的函数
+        function createSpotHTML(index) {
+            return `
+            <div class="spot-card">
+                <div class="spot-header">
+                    <span class="spot-title">点位 ${index + 1}</span>
+                    <button class="btn-reset" onclick="resetSpot(${index})">重置归零</button>
+                </div>
+                <div class="spot-actions">
+                    <button class="btn-make" onclick="addMake(${index})">进球 +1</button>
+                    <button class="btn-miss" onclick="addMiss(${index})">不进 +1</button>
+                </div>
+                <div class="spot-stats">
+                    进球: <span id="make-count-${index}">0</span> | 不进: <span id="miss-count-${index}">0</span><br>
+                    总投篮: <span id="total-count-${index}">0</span> | 命中率: <span id="percent-count-${index}" class="stat-highlight">0%</span>
+                </div>
+            </div>
+            `;
         }
 
-        // 记录投篮：isMake为true代表进球，false代表不进
-        function recordShot(index, isMake) {
-            if (isMake) {
-                spotsData[index].makes += 1;
-            } else {
-                spotsData[index].misses += 1;
+        // 渲染所有点位面板
+        function renderAllSpots() {
+            spotsContainer.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                spotsContainer.innerHTML += createSpotHTML(i);
             }
-            render(); // 每次点击后重新渲染界面刷新数据
+            updateAllUI();
         }
 
-        // 重置单个点位的数据
-        function resetSpot(index) {
-            spotsData[index].makes = 0;
-            spotsData[index].misses = 0;
-            render();
+        // 更新所有面板的数据显示
+        function updateAllUI() {
+            for (let i = 0; i < 5; i++) {
+                updateUI(i);
+            }
         }
 
-        // 初始渲染
-        render();
-    </script>
+        // 更新单个面板的数据显示及计算逻辑
+        function updateUI(index) {
+            const data = spotsData[index];
+            const total = data.make + data.miss;
+            const percent = total === 0 ? 0 : Math.round((data.make / total) * 100);
+
+            document.getElementById(`make-count-${index}`).innerText = data.make;
+            document.getElementById(`miss-count-${index}`).innerText = data.miss;
+            document.getElementById(`total-count-${index}`).innerText = total;
+            document.getElementById(`percent-count-${index}`).innerText = percent + '%';
+        }
+
+        // 绑定到 Window 对象上的按钮功能：进球
+        window.addMake = function(index) {
+            spotsData[index].make += 1;
+            updateUI(index);
+        };
+
+        // 按钮功能：不进
+        window.addMiss = function(index) {
+            spotsData[index].miss += 1;
+            updateUI(index);
+        };
+
+        // 按钮功能：单个点位重置
+        window.resetSpot = function(index) {
+            spotsData[index] = { make: 0, miss: 0 };
+            updateUI(index);
+        };
+
+        // 核心功能：读取指定天数的数据
+        function loadDataForDay(day) {
+            const savedData = localStorage.getItem(`basketball_training_day_${day}`);
+            if (savedData) {
+                // 如果该天有记录，则覆盖当前界面
+                const parsed = JSON.parse(savedData);
+                spotsData = parsed.spots;
+                if (parsed.date) {
+                    dateInput.value = parsed.date;
+                }
+            } else {
+                // 如果没有记录，重置所有数据并设定为今天的日期
+                spotsData = Array(5).fill().map(() => ({ make: 0, miss: 0 }));
+                dateInput.value = new Date().toISOString().split('T')[0]; 
+            }
+            updateAllUI();
+        }
+
+        // 核心功能：保存当前天数的数据
+        function saveDataForDay() {
+            const day = dayInput.value;
+            const dataToSave = {
+                date: dateInput.value,
+                spots: spotsData
+            };
+            localStorage.setItem(`basketball_training_day_${day}`, JSON.stringify(dataToSave));
+            alert(`✅ 第 ${day} 天的数据已保存！`);
+        }
+
+        // 事件监听：当天数输入框发生变化时，自动调用那一天的数据
+        dayInput.addEventListener('change', (e) => {
+            const newDay = e.target.value;
+            if (newDay > 0) {
+                loadDataForDay(newDay);
+            }
+        });
+
+        // 事件监听：保存按钮
+        saveBtn.addEventListener('click', () => {
+            saveDataForDay();
+        });
+
+        // 页面首次加载时初始化
+        renderAllSpots();
+        loadDataForDay(dayInput.value);
+    });
+</script>
 </body>
 </html>
