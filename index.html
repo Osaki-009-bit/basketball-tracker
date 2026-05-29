@@ -75,7 +75,7 @@
     <script>
         const numSpots = 5;
         
-        // 获取格式化的今日日期 (例如: 2026-05-29)
+        // 获取格式化的今日日期
         function getTodayString() {
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -87,8 +87,6 @@
         const todayStr = getTodayString();
 
         // 初始化数据
-        // todayData: 当前正在训练的数据（缓存在本地，防刷新丢失）
-        // historyData: 存储所有历史数据的对象 { "2026-05-29": [点位数组], "2026-05-28": [...] }
         let todayData = JSON.parse(localStorage.getItem('basketballCurrent')) || Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
         let historyData = JSON.parse(localStorage.getItem('basketballHistory')) || {};
 
@@ -99,17 +97,19 @@
         }
 
         function saveTodayData() {
-            // 将今日数据深拷贝并存入历史记录对象中，键名为当天的日期
             historyData[todayStr] = JSON.parse(JSON.stringify(todayData));
             localStorage.setItem('basketballHistory', JSON.stringify(historyData));
             alert(`已成功保存 ${todayStr} 的训练数据！`);
         }
 
         function clearTodayData() {
-            if(confirm("确定要清空今日的临时训练数据吗？（不影响已保存的历史记录）")) {
-                todayData = Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
-                saveLocalCurrent();
-                renderTrainView();
+            // 为了体验一致性，底部的“清空今日临时数据”也加上双重确认
+            if(confirm("警告：确定要清空今日的所有训练数据吗？")) {
+                if(confirm("再次确认：清空后无法恢复，确定要彻底清空吗？")) {
+                    todayData = Array.from({ length: numSpots }, () => ({ makes: 0, misses: 0 }));
+                    saveLocalCurrent();
+                    renderTrainView();
+                }
             }
         }
 
@@ -124,10 +124,15 @@
         }
 
         function resetSpot(index) {
-            todayData[index].makes = 0;
-            todayData[index].misses = 0;
-            saveLocalCurrent();
-            renderTrainView();
+            // 新增：双重弹窗确认逻辑
+            if (confirm(`确定要将【点位 ${index + 1}】的数据归零吗？`)) {
+                if (confirm(`再次确认：真的要将【点位 ${index + 1}】彻底归零吗？操作不可逆转！`)) {
+                    todayData[index].makes = 0;
+                    todayData[index].misses = 0;
+                    saveLocalCurrent();
+                    renderTrainView();
+                }
+            }
         }
 
         // === 视图渲染逻辑 ===
@@ -145,7 +150,6 @@
             }
         }
 
-        // 计算并生成统计HTML（通用函数，用于训练和历史视图）
         function generateStatsHTML(dataArray, isReadOnly = false) {
             let overallMakes = 0;
             let overallMisses = 0;
@@ -194,7 +198,6 @@
         function renderTrainView() {
             document.getElementById('current-date-display').innerText = `📅 当前日期: ${todayStr}`;
             document.getElementById('train-app').innerHTML = generateStatsHTML(todayData, false);
-            // 移除原本自带的 total-stats 防止重复，将 generateStatsHTML 的输出直接放在 train-app 中
             document.getElementById('train-total-display').style.display = 'none'; 
         }
 
@@ -202,7 +205,6 @@
             const selector = document.getElementById('history-date-selector');
             selector.innerHTML = '<option value="">-- 请选择历史日期 --</option>';
             
-            // 按日期倒序排列
             const dates = Object.keys(historyData).sort((a, b) => new Date(b) - new Date(a));
             
             if (dates.length === 0) {
@@ -228,11 +230,9 @@
             }
 
             const targetData = historyData[date];
-            // 传入 true 表示只读，不渲染操作按钮
             contentDiv.innerHTML = generateStatsHTML(targetData, true);
         }
 
-        // 初始化
         renderTrainView();
     </script>
 </body>
